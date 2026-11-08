@@ -206,3 +206,35 @@ curl http://127.0.0.1:5000/v2/_catalog
 ![Задача 5, шаг 3](img/task5-3.png)
 
 Адрес registry в начале имени образа подсказывает Docker, куда его отправить. Digest совпадает с образом на Docker Hub (`sha256:23987db6...`): это тот же образ.
+
+### 4–5. Portainer и деплой стека
+
+Portainer слушает `127.0.0.1:9000` на ВМ. Доступ с рабочей станции сделан через SSH-туннель:
+
+```powershell
+ssh -i $HOME\.ssh\oward6656 -L 9000:127.0.0.1:9000 -L 9090:127.0.0.1:9090 oward6656@158.160.150.97
+```
+
+Portainer 2.45 при начальной настройке, кроме логина и пароля, требует **Setup token** из лога сервера: `docker logs task5-portainer-1 | grep -i token`.
+
+Стек `nginx` задеплоен через Stacks → Add stack → Web editor:
+
+```yaml
+version: '3'
+
+services:
+  nginx:
+    image: 127.0.0.1:5000/custom-nginx
+    ports:
+      - "9090:80"
+```
+
+![Задача 5, стек в Portainer](img/task5-4.png)
+
+Страница из образа, взятого из локального registry, открывается на порту 9090:
+
+![Задача 5, nginx на 9090](img/task5-5.png)
+
+### 6. Inspect контейнера (Config)
+
+![Задача 5, inspect](img/task5-6.png)
