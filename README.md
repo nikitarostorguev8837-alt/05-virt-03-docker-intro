@@ -238,3 +238,25 @@ services:
 ### 6. Inspect контейнера (Config)
 
 ![Задача 5, inspect](img/task5-6.png)
+
+### 7. Удаление манифеста, orphan-контейнеры, остановка проекта
+
+```bash
+rm compose.yaml
+docker compose up -d
+docker compose up -d --remove-orphans
+docker compose down
+docker ps
+```
+
+![Задача 5, шаг 7](img/task5-7.png)
+
+**Суть предупреждения:**
+
+```
+WARN[0000] Found orphan containers (task5-portainer-1) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up.
+```
+
+Compose связывает контейнеры с проектом по меткам. Имя проекта берётся от имени папки (`task5`), поэтому оно одно и для `compose.yaml`, и для `docker-compose.yaml`. После удаления `compose.yaml` Compose читает `docker-compose.yaml`, где есть только `registry`. При этом контейнер `task5-portainer-1` с меткой проекта `task5` продолжает работать. Это orphan: контейнер проекта, сервиса которого больше нет в конфигурации. Сам Compose его не удаляет, а только предупреждает и предлагает флаг `--remove-orphans`. После `docker compose up -d --remove-orphans` контейнер portainer удалён.
+
+Проект погашен одной командой `docker compose down`: удалены контейнер registry и сеть `task5_default`. Стек `nginx` из Portainer — отдельный compose-проект, поэтому `down` его не затронул.
