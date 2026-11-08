@@ -52,7 +52,84 @@ curl http://127.0.0.1:8080
 
 ## Задача 3
 
-_В работе._
+### 1–4. Подключение к потокам контейнера, Ctrl-C, перезапуск
+
+```bash
+docker attach custom-nginx-t2   # затем Ctrl-C
+docker ps -a
+docker start custom-nginx-t2
+```
+
+![Задача 3, шаги 1-4](img/task3-1.png)
+
+**Почему контейнер остановился.** `docker attach` подключает терминал к стандартным потокам главного процесса контейнера (PID 1, мастер-процесс nginx). Ctrl-C отправляет ему сигнал SIGINT. Это видно в логе: `1#1: signal 2 (SIGINT) received, exiting`. Nginx завершает воркеры и выходит сам. Контейнер живёт ровно столько, сколько живёт его PID 1, поэтому вместе с процессом остановился и контейнер: в `docker ps -a` статус `Exited (0)`.
+
+### 5–9. Смена порта nginx внутри контейнера
+
+```bash
+docker exec -it custom-nginx-t2 bash
+apt-get update
+apt-get install -y nano
+nano /etc/nginx/conf.d/default.conf   # listen 80; -> listen 81;
+nginx -s reload
+curl http://127.0.0.1:80
+curl http://127.0.0.1:81
+exit
+```
+
+![Задача 3, шаги 5-8](img/task3-2-1.png)
+![Задача 3, шаги 8-9](img/task3-2-2.png)
+
+### 10. Проверка с хоста
+
+```bash
+ss -tlpn | grep 127.0.0.1:8080
+docker port custom-nginx-t2
+curl http://127.0.0.1:8080
+```
+
+![Задача 3, шаг 10](img/task3-3.png)
+
+**В чём проблема.** Порт `127.0.0.1:8080` на хосте по-прежнему слушается: его держит `docker-proxy`. По `docker port` проброс всё ещё ведёт в порт **80** контейнера. Но nginx после правки конфига слушает **81**, а на 80 внутри контейнера никого нет. Прокси принимает соединение, не может передать его в контейнер и сбрасывает: `Connection reset by peer`. Проброс портов задаётся один раз при `docker run` и не отслеживает изменения внутри контейнера.
+
+### 11. (Дополнительно) Исправление проброса без удаления контейнера
+
+Параметры, заданные при `docker run`, Docker хранит в `/var/lib/docker/containers/<ID>/`: `PortBindings` лежат в `hostconfig.json`, `ExposedPorts` в `config.v2.json`. Останавливаем контейнер и демон Docker (иначе при остановке он перезапишет файлы из памяти), меняем `80/tcp` на `81/tcp` и запускаем обратно. Конфигурация nginx не менялась, контейнер не удалялся.
+
+```bash
+docker stop custom-nginx-t2
+sudo systemctl stop docker.socket
+sudo systemctl stop docker
+sudo -i
+cd /var/lib/docker/containers/<ID>
+cp hostconfig.json hostconfig.json.bak
+cp config.v2.json config.v2.json.bak
+sed -i 's#"80/tcp"#"81/tcp"#g' hostconfig.json
+sed -i 's#"80/tcp"#"81/tcp"#g' config.v2.json
+exit
+sudo systemctl start docker
+docker start custom-nginx-t2
+docker port custom-nginx-t2     # 81/tcp -> 127.0.0.1:8080
+curl http://127.0.0.1:8080
+```
+
+![Задача 3, шаг 11](img/task3-11.png)
+
+Шаг 11 выполнялся на первом экземпляре контейнера `custom-nginx-t2` (ID `720430c6e4fe`) с той же конфигурацией. Шаги 1–10 сняты на пересозданном контейнере (ID `71abcfd693f5`).
+
+### 12. Удаление запущенного контейнера без остановки
+
+Для этого шага контейнер был заново запущен той же командой, что в задаче 2 (`docker run -d --name custom-nginx-t2 -p 127.0.0.1:8080:80 custom-nginx:1.0.0`).
+
+```bash
+docker ps
+docker rm -f custom-nginx-t2
+docker ps -a
+```
+
+![Задача 3, шаг 12](img/task3-5.png)
+
+Флаг `-f` сам отправляет контейнеру SIGKILL и удаляет его, отдельный `docker stop` не нужен.
 
 ---
 
