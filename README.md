@@ -135,7 +135,26 @@ docker ps -a
 
 ## Задача 4
 
-_В работе._
+Главный процесс образов centos и debian — `bash`. Без терминала он сразу завершается, и контейнер останавливается. Поэтому для работы в фоне контейнерам передана команда `sleep infinity`.
+
+```bash
+docker run -d --name centos-t4 -v $(pwd):/data centos:7 sleep infinity
+docker run -d --name debian-t4 -v $(pwd):/data debian:12 sleep infinity
+docker ps
+docker exec -it centos-t4 bash
+  echo "Hello from CentOS container" > /data/centos.txt
+  exit
+echo "Hello from host" > host.txt
+docker exec -it debian-t4 bash
+  ls -l /data
+  cat /data/centos.txt
+  cat /data/host.txt
+  exit
+```
+
+![Задача 4](img/task4-1.png)
+
+Оба контейнера и хост работают с одной и той же папкой (bind mount), поэтому в Debian видны и файл из CentOS, и файл с хоста. `centos.txt` принадлежит `root`: его создал root внутри контейнера. `host.txt` показан с UID `1000`: это пользователь хоста, которого в образе debian нет по имени.
 
 ---
 
