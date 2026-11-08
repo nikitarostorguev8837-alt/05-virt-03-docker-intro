@@ -160,4 +160,49 @@ docker exec -it debian-t4 bash
 
 ## Задача 5
 
-_В работе._
+### 1. Какой файл запустился
+
+В папке `/tmp/netology/docker/task5` лежат `compose.yaml` (portainer) и `docker-compose.yaml` (registry). После `docker compose up -d` запустился только **`compose.yaml`**:
+
+```
+WARN[0000] Found multiple config files with supported names: .../compose.yaml, .../docker-compose.yaml
+WARN[0000] Using /tmp/netology/docker/task5/compose.yaml
+```
+
+Без флага `-f` Compose ищет в текущей папке файл с одним из стандартных имён. Основным (каноническим) считается `compose.yaml`, а `docker-compose.yaml` поддерживается для обратной совместимости. Когда в папке есть оба, берётся основной, а второй игнорируется ([документация](https://docs.docker.com/compose/intro/compose-application-model/#the-compose-file)).
+
+![Задача 5, шаг 1](img/task5-1.png)
+
+### 2. Запуск обоих файлов через `include`
+
+Итоговый [compose.yaml](task5/compose.yaml):
+
+```yaml
+version: "3"
+include:
+  - docker-compose.yaml
+services:
+  portainer:
+    network_mode: host
+    image: portainer/portainer-ce:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+```
+
+`include` подключает сервисы из другого compose-файла в текущий проект. Теперь запускаются и portainer, и registry.
+
+![Задача 5, шаг 2](img/task5-2.png)
+
+Предупреждение `the attribute version is obsolete` означает, что современный Compose игнорирует поле `version`. Оно оставлено, потому что так дано в задании.
+
+### 3. Образ custom-nginx в локальном registry
+
+```bash
+docker tag custom-nginx:1.0.0 127.0.0.1:5000/custom-nginx:latest
+docker push 127.0.0.1:5000/custom-nginx:latest
+curl http://127.0.0.1:5000/v2/_catalog
+```
+
+![Задача 5, шаг 3](img/task5-3.png)
+
+Адрес registry в начале имени образа подсказывает Docker, куда его отправить. Digest совпадает с образом на Docker Hub (`sha256:23987db6...`): это тот же образ.
