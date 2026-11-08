@@ -35,7 +35,18 @@ docker push rostorguev/custom-nginx:1.0.0
 
 ## Задача 2
 
-_В работе._
+Docker не принимает кириллицу в именах контейнеров, поэтому ФИО записано латиницей.
+
+```bash
+docker run -d --name rostorguev-nikita-custom-nginx-t2 -p 127.0.0.1:8080:80 custom-nginx:1.0.0
+docker rename rostorguev-nikita-custom-nginx-t2 custom-nginx-t2
+date +"%d-%m-%Y %T.%N %Z" ; sleep 0.150 ; docker ps ; ss -tlpn | grep 127.0.0.1:8080 ; docker logs custom-nginx-t2 -n1 ; docker exec -it custom-nginx-t2 base64 /usr/share/nginx/html/index.html
+curl http://127.0.0.1:8080
+```
+
+![Задача 2](img/task2.png)
+
+После переименования ID контейнера (`720430c6e4fe`) и проброс порта `127.0.0.1:8080->80/tcp` остались прежними. Индекс-страница отдаётся по `curl`.
 
 ---
 
